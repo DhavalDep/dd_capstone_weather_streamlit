@@ -132,7 +132,7 @@ select_yesterday_real_query = """
     SELECT hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
     FROM student.de10_dd_captest_full_forecast
     WHERE city = %s
-    AND RIGHT(date, 5) = '16:00'
+    AND RIGHT(date, 5) = '11:00'
     ORDER BY date DESC
     LIMIT 2;
     """
@@ -144,7 +144,7 @@ select_yesterday_fc_query = """
     SELECT hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
     FROM student.de10_dd_captest_full_forecast
     WHERE city = %s
-    AND RIGHT(date, 5) = '11:00'
+    AND RIGHT(date, 5) = '12:00'
     ORDER BY date DESC
     LIMIT 2;
     """
@@ -154,9 +154,10 @@ yesterday_fc = cursor.fetchall()
 
 accuracy = pd.DataFrame({
     'Forecasted': yesterday_fc[1],
-    'Real': real[1]
+    'Real': real[0]
 })
-accuracy['Hour'] = range(24)
+#accuracy['Hour'] = range(24)
+accuracy['Time'] = times
 
 # Plotting the data
 plt.figure(figsize=(12, 8))
@@ -165,15 +166,15 @@ plt.figure(figsize=(12, 8))
 palette = sns.color_palette("coolwarm", 2)
 
 # Plotting with markers and custom styles
-sns.lineplot(data=accuracy, x='Hour', y='Forecasted', marker='o', label='Forecasted Temperature', color=palette[0], linestyle='-', linewidth=2.5)
-sns.lineplot(data=accuracy, x='Hour', y='Real', marker='s', label='Actual Temperature', color=palette[1], linestyle='--', linewidth=2.5)
+sns.lineplot(data=accuracy, x='Time', y='Forecasted', marker='o', label='Forecasted Temperature', color=palette[0], linestyle='-', linewidth=2.5)
+sns.lineplot(data=accuracy, x='Time', y='Real', marker='s', label='Actual Temperature', color=palette[1], linestyle='--', linewidth=2.5)
 
 # Enhancing the plot
 plt.title('Temperature Forecasted vs Actual Temperature', fontsize=16, fontweight='bold')
-plt.xlabel('Hour of the Day', fontsize=14)
+plt.xlabel('Time', fontsize=14)
 plt.ylabel('Temperature (°C)', fontsize=14)
 plt.grid(True, linestyle='--', alpha=0.6)
-plt.xticks(range(24), fontsize=12)
+plt.xticks(rotation=45, fontsize=12)
 plt.yticks(fontsize=12)
 sns.despine()
 plt.legend(title='Key', title_fontsize='13', fontsize='12')
