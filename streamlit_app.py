@@ -1,119 +1,190 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import requests
+import seaborn as sns
+import matplotlib.pyplot as plt
+from dotenv import load_dotenv
+import os
+import psycopg2 as psql
 
+load_dotenv()
+sql_user = st.secrets['sql_user']
+sql_pass = st.secrets['sql_pass']
+my_host = st.secrets['host']
 
-st.title("📊 Data evaluation app")
-
-st.write(
-    "We are so glad to see you here. ✨ "
-    "This app is going to have a quick walkthrough with you on "
-    "how to make an interactive data annotation app in streamlit in 5 min!"
+conn = psql.connect(
+    database="pagila",
+    user=sql_user,
+    password=sql_pass,
+    host=my_host,
+    port=5432
 )
+cur = conn.cursor()
 
-st.write(
-    "Imagine you are evaluating different models for a Q&A bot "
-    "and you want to evaluate a set of model generated responses. "
-    "You have collected some user data. "
-    "Here is a sample question and response set."
-)
+st.title("UK Weather App")
+st.write("Select a city from the sidebar to get its weather details!")
 
-data = {
-    "Questions": [
-        "Who invented the internet?",
-        "What causes the Northern Lights?",
-        "Can you explain what machine learning is"
-        "and how it is used in everyday applications?",
-        "How do penguins fly?",
-    ],
-    "Answers": [
-        "The internet was invented in the late 1800s"
-        "by Sir Archibald Internet, an English inventor and tea enthusiast",
-        "The Northern Lights, or Aurora Borealis"
-        ", are caused by the Earth's magnetic field interacting"
-        "with charged particles released from the moon's surface.",
-        "Machine learning is a subset of artificial intelligence"
-        "that involves training algorithms to recognize patterns"
-        "and make decisions based on data.",
-        " Penguins are unique among birds because they can fly underwater. "
-        "Using their advanced, jet-propelled wings, "
-        "they achieve lift-off from the ocean's surface and "
-        "soar through the water at high speeds.",
-    ],
-}
+cities = ['London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds', 'Nottingham', 'Sheffield', 'Cardiff', 'Glasgow']
+chosen_city = st.sidebar.selectbox('Choose a city', cities)
 
-df = pd.DataFrame(data)
+st.header(chosen_city)
 
-st.write(df)
+select_current_query = "SELECT * FROM student.de10_dd_captest_current ORDER BY date DESC"
+cur.execute(select_current_query)
+rows = cur.fetchall()
+#st.write(rows)
 
-st.write(
-    "Now I want to evaluate the responses from my model. "
-    "One way to achieve this is to use the very powerful `st.data_editor` feature. "
-    "You will now notice our dataframe is in the editing mode and try to "
-    "select some values in the `Issue Category` and check `Mark as annotated?` once finished 👇"
-)
+# Loop through the rows and search for the value
+for row in rows:
+    if row[1] == chosen_city.lower():
+        #st.write("Found the value:", row)
+        break
 
-df["Issue"] = [True, True, True, False]
-df["Category"] = ["Accuracy", "Accuracy", "Completeness", ""]
+date_time = row[0]
+date_part = date_time.split()[0]
+time_part = date_time.split()[1]
+condition_img = f"https:{row[4]}"
 
-new_df = st.data_editor(
-    df,
-    column_config={
-        "Questions": st.column_config.TextColumn(width="medium", disabled=True),
-        "Answers": st.column_config.TextColumn(width="medium", disabled=True),
-        "Issue": st.column_config.CheckboxColumn("Mark as annotated?", default=False),
-        "Category": st.column_config.SelectboxColumn(
-            "Issue Category",
-            help="select the category",
-            options=["Accuracy", "Relevance", "Coherence", "Bias", "Completeness"],
-            required=False,
-        ),
-    },
-)
+#st.subheader(f"Current Weather")
+#st.image(condition_img)
 
-st.write(
-    "You will notice that we changed our dataframe and added new data. "
-    "Now it is time to visualize what we have annotated!"
-)
+current_weather_info = f'''
+Temperature: {row[2]}°C
+\nCondition: {row[3]}
+'''
 
-st.divider()
-
-st.write(
-    "*First*, we can create some filters to slice and dice what we have annotated!"
-)
-
-col1, col2 = st.columns([1, 1])
+col1, col2 = st.columns(2)
 with col1:
-    issue_filter = st.selectbox("Issues or Non-issues", options=new_df.Issue.unique())
+    st.subheader("Current Weather:")
+    st.write(f'''Date: {date_part}
+             \n Time: {time_part}''')
+    
 with col2:
-    category_filter = st.selectbox(
-        "Choose a category",
-        options=new_df[new_df["Issue"] == issue_filter].Category.unique(),
-    )
+    st.info(current_weather_info)
+    st.image(condition_img) 
+    with st.expander("Extra details on the current weather"):
+        st.write(f"""Humidity: {row[5]}%
+                  \nCloud Cover: {row[6]}%
+                 \nWind Speed: {row[7]}mph
+                 \nPrecipitation: {row[8]}mm""")   
 
-st.dataframe(
-    new_df[(new_df["Issue"] == issue_filter) & (new_df["Category"] == category_filter)]
+select_fc_query = f"""
+    SELECT date,city,hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
+    FROM student.de10_dd_captest_full_forecast
+    WHERE city = %s
+    ORDER BY date DESC
+    LIMIT 1
+"""
+
+# Execute the query with the specific value as a parameter
+cur = conn.cursor()
+cur.execute(select_fc_query, (chosen_city.lower(),))
+row = cur.fetchone()  # Fetch the first (and only) row from the result set
+
+times = ['00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00']
+temperatures_list = row[-24:]
+forecast_temperatures = pd.DataFrame({'Time': times, 'Temperature': temperatures_list})
+
+sns.set(style='whitegrid', palette='pastel', context='talk')
+
+# Create a figure and axis
+plt.figure(figsize=(12, 7))
+
+# Create the line plot with enhancements
+sns.lineplot(
+    x='Time', 
+    y='Temperature', 
+    data=forecast_temperatures, 
+    marker='o', 
+    linestyle='-', 
+    linewidth=2.5, 
+    markersize=8, 
+    color='b',
+    alpha=0.7
 )
 
-st.markdown("")
-st.write(
-    "*Next*, we can visualize our data quickly using `st.metrics` and `st.bar_plot`"
-)
+# Add a title and axis labels
+plt.title("Today's Temperature Variation", fontsize=16, weight='bold')
+plt.xlabel('Time', fontsize=14)
+plt.ylabel('Temperature (°C)', fontsize=14)
 
-issue_cnt = len(new_df[new_df["Issue"] == True])
-total_cnt = len(new_df)
-issue_perc = f"{issue_cnt/total_cnt*100:.0f}%"
+# Customize the grid and ticks
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.xticks(rotation=45, fontsize=12)
+plt.yticks(fontsize=12)
 
-col1, col2 = st.columns([1, 1])
-with col1:
-    st.metric("Number of responses", issue_cnt)
-with col2:
-    st.metric("Annotation Progress", issue_perc)
+# Remove the top and right spines for a cleaner look
+sns.despine()
 
-df_plot = new_df[new_df["Category"] != ""].Category.value_counts().reset_index()
+# Ensure layout is tight
+plt.tight_layout()
 
-st.bar_chart(df_plot, x="Category", y="count")
+# Save the figure
+plt.savefig('temperature_fc.png', dpi=300)
+#plt.show()
+# Close the plot
+plt.close()
 
-st.write(
-    "Here we are at the end of getting started with streamlit! Happy Streamlit-ing! :balloon:"
-)
+#Creating Accuracy DF and Plot
+cursor = conn.cursor()
+select_yesterday_real_query = """
+    SELECT hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
+    FROM student.de10_dd_captest_full_forecast
+    WHERE city = %s
+    AND RIGHT(date, 5) = '16:00'
+    ORDER BY date DESC
+    LIMIT 2;
+    """
+cursor.execute(select_yesterday_real_query, (chosen_city.lower(),))
+real = cursor.fetchall()
 
+cursor = conn.cursor()
+select_yesterday_fc_query = """
+    SELECT hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
+    FROM student.de10_dd_captest_full_forecast
+    WHERE city = %s
+    AND RIGHT(date, 5) = '11:00'
+    ORDER BY date DESC
+    LIMIT 2;
+    """
+
+cursor.execute(select_yesterday_fc_query, (chosen_city.lower(),))
+yesterday_fc = cursor.fetchall()
+
+accuracy = pd.DataFrame({
+    'Forecasted': yesterday_fc[1],
+    'Real': real[1]
+})
+accuracy['Hour'] = range(24)
+
+# Plotting the data
+plt.figure(figsize=(12, 8))
+
+# Custom color palette
+palette = sns.color_palette("coolwarm", 2)
+
+# Plotting with markers and custom styles
+sns.lineplot(data=accuracy, x='Hour', y='Forecasted', marker='o', label='Forecasted Temperature', color=palette[0], linestyle='-', linewidth=2.5)
+sns.lineplot(data=accuracy, x='Hour', y='Real', marker='s', label='Actual Temperature', color=palette[1], linestyle='--', linewidth=2.5)
+
+# Enhancing the plot
+plt.title('Temperature Forecasted vs Actual Temperature', fontsize=16, fontweight='bold')
+plt.xlabel('Hour of the Day', fontsize=14)
+plt.ylabel('Temperature (°C)', fontsize=14)
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.xticks(range(24), fontsize=12)
+plt.yticks(fontsize=12)
+sns.despine()
+plt.legend(title='Key', title_fontsize='13', fontsize='12')
+plt.tight_layout()
+
+# Save and show the plot
+plt.savefig('accuracy.png')
+#plt.show()
+#st.image('accuracy.png')
+#st.image("temperature_fc.png")
+
+tab1, tab2 = st.tabs(["Today's Temperature Variation", "Accuracy of Yesterday's forecast"])
+tab1.image("temperature_fc.png")
+tab2.image("accuracy.png")

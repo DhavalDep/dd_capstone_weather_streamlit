@@ -1,1 +1,8 @@
 streamlit
+seaborn
+matplotlib
+psycopg2
+dotenv
+pandas
+requests
+os
