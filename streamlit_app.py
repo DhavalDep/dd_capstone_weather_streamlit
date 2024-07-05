@@ -132,7 +132,7 @@ select_yesterday_real_query = """
     SELECT hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
     FROM student.de10_dd_captest_full_forecast
     WHERE city = %s
-    AND RIGHT(date, 5) = '11:00'
+    AND RIGHT(date, 5) = '23:00'
     ORDER BY date DESC
     LIMIT 2;
     """
@@ -144,7 +144,7 @@ select_yesterday_fc_query = """
     SELECT hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
     FROM student.de10_dd_captest_full_forecast
     WHERE city = %s
-    AND RIGHT(date, 5) = '12:00'
+    AND RIGHT(date, 5) = '00:00'
     ORDER BY date DESC
     LIMIT 2;
     """
