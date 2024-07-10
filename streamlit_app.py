@@ -1,3 +1,4 @@
+#All libraries used
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,11 +9,13 @@ from dotenv import load_dotenv
 import os
 import psycopg2 as psql
 
+#Getting the details from secrets
 load_dotenv()
 sql_user = st.secrets['sql_user']
 sql_pass = st.secrets['sql_pass']
 my_host = st.secrets['host']
 
+#Connect to the database
 conn = psql.connect(
     database="pagila",
     user=sql_user,
@@ -22,14 +25,17 @@ conn = psql.connect(
 )
 cur = conn.cursor()
 
+#Title
 st.title("UK Weather App")
 st.write("Select a city from the sidebar to get its weather details!")
 
+#Sidebar for choosing a city
 cities = ['London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds', 'Nottingham', 'Sheffield', 'Cardiff', 'Glasgow']
 chosen_city = st.sidebar.selectbox('Choose a city', cities)
 
 st.header(chosen_city)
 
+#Selecting all data from the current weather db
 select_current_query = "SELECT * FROM student.de10_dd_captest_current ORDER BY date DESC"
 cur.execute(select_current_query)
 rows = cur.fetchall()
@@ -41,19 +47,19 @@ for row in rows:
         #st.write("Found the value:", row)
         break
 
+#Assign the variables (and split the date column into date and time)
 date_time = row[0]
 date_part = date_time.split()[0]
 time_part = date_time.split()[1]
 condition_img = f"https:{row[4]}"
 
-#st.subheader(f"Current Weather")
-#st.image(condition_img)
-
+#Variable for displaying the temp and condition in a box
 current_weather_info = f'''
 Temperature: {row[2]}°C
 \nCondition: {row[3]}
 '''
 
+#The format for the page
 col1, col2 = st.columns(2)
 with col1:
     st.subheader("Current Weather:")
@@ -69,6 +75,7 @@ with col2:
                  \nWind Speed: {row[7]}mph
                  \nPrecipitation: {row[8]}mm""")   
 
+#Select data from the full forecast table
 select_fc_query = f"""
     SELECT date,city,hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
     FROM student.de10_dd_captest_full_forecast
@@ -82,6 +89,7 @@ cur = conn.cursor()
 cur.execute(select_fc_query, (chosen_city.lower(),))
 row = cur.fetchone()  # Fetch the first (and only) row from the result set
 
+#Variables and data for the graph
 times = ['00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00']
 temperatures_list = row[-24:]
 forecast_temperatures = pd.DataFrame({'Time': times, 'Temperature': temperatures_list})
@@ -128,6 +136,7 @@ plt.close()
 
 #Creating Accuracy DF and Plot
 cursor = conn.cursor()
+#Data from db about the actual temp
 select_yesterday_real_query = """
     SELECT hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
     FROM student.de10_dd_captest_full_forecast
@@ -140,6 +149,7 @@ cursor.execute(select_yesterday_real_query, (chosen_city.lower(),))
 real = cursor.fetchall()
 
 cursor = conn.cursor()
+#Data from db about the predicted temp
 select_yesterday_fc_query = """
     SELECT hr0_temp,hr1_temp,hr2_temp,hr3_temp,hr4_temp,hr5_temp,hr6_temp,hr7_temp,hr8_temp,hr9_temp,hr10_temp,hr11_temp,hr12_temp,hr13_temp,hr14_temp,hr15_temp,hr16_temp,hr17_temp,hr18_temp,hr19_temp,hr20_temp,hr21_temp,hr22_temp,hr23_temp
     FROM student.de10_dd_captest_full_forecast
@@ -152,11 +162,11 @@ select_yesterday_fc_query = """
 cursor.execute(select_yesterday_fc_query, (chosen_city.lower(),))
 yesterday_fc = cursor.fetchall()
 
+#Creating DF for this data
 accuracy = pd.DataFrame({
     'Forecasted': yesterday_fc[1],
     'Real': real[0]
 })
-#accuracy['Hour'] = range(24)
 accuracy['Time'] = times
 
 # Plotting the data
@@ -183,9 +193,9 @@ plt.tight_layout()
 # Save and show the plot
 plt.savefig('accuracy.png')
 #plt.show()
-#st.image('accuracy.png')
-#st.image("temperature_fc.png")
 
+
+#The tabs for how the graphs created are displayed
 tab1, tab2 = st.tabs(["Today's Temperature Variation", "Accuracy of Yesterday's forecast"])
 tab1.image("temperature_fc.png")
 tab2.image("accuracy.png")
