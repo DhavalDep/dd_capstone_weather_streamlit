@@ -1,9 +1,12 @@
-# 📊 Data evaluation template
+# 📊 UK Weather Application
 
-A simple Streamlit app showing how to evaluate and annotate data, using dataframes
-and charts. 
+This is a streamlit application that is used to see the current weather and forecasted weather for certain cities in the UK.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://data-evaluation-template.streamlit.app/)
+It uses a python code (on other repo) to collect data from an API about the weather and store this in two SQL tables, which is run hourly on a CRON job.
+This data is then used by the streamlit app to create a nice dashboard where a user can see: The current temperature, the current condition,
+the forecasted temperature for the day, and also the accuracy of yesterdays forecast, for a UK city of the users choice. This is all presented,
+tidily to the user by an easy to read/use interface.
+
 
 ### How to run it on your own machine
 
